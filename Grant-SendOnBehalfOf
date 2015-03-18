@@ -1,0 +1,53 @@
+# ==============================================================================================
+# NAME: Grant-SendOnBehalfOf.ps1
+# AUTHOR: ranger69
+# DATE  : 3/14/2015
+# 
+# COMMENT: 
+# Tested on Exchange 2010 with Exchange Management Shell,
+# Tested on Exchange 2010 using Exchange Remote Management Shell
+# ==============================================================================================
+
+Function Grant-SendOnBehalfOf {
+<# 
+.SYNOPSIS 
+Grant send on behalf of permissions for one or more users to a mailbox.
+.EXAMPLE
+C:\PS> Grant-SendOnBehalfOf -Mailbox 7SinsSaTx -Users bgates@insidepowershell.com
+AddsSend On Behalf Of Permissions for a one user to a specific mailbox by alias
+.EXAMPLE
+C:\PS> $NewUsers = Get-Content 'c:\ListOfUsers.txt'
+Grant-SendOnBehalfOf -Mailbox 7SinsSaTx -Users $NewUsers
+AddsSend On Behalf Of Permissions for a list of users to a specific mailbox by alias
+#>
+[CmdletBinding()] 
+Param(
+[Parameter(Mandatory=$true,Position=0,HelpMessage="Enter Mailbox Alias with 5 or more characters")]
+[ValidateLength(5,45)]   
+[string[]]$Mailbox,
+[string[]]$Users)
+
+# Preparing Screen Outputs
+$CList = "`r`nCurrent List of Users with GrantSendOnBehalfTo Permissions`r`n"
+$UList = "`r`nUpdated List of Users with GrantSendOnBehalfTo Permissions`r`n"
+# Gathering List of Current Users with GrantSendOnBehalfTo Permissions
+$CUsers = Get-Mailbox "$mailbox" | select GrantSendOnBehalfTo
+# Screen Outputs with list of Current Users
+$CList
+$CUsers.GrantSendOnBehalfTo | %{Get-User $_ | select displayname,samaccountname}
+
+# A list of users may be used
+# A For Statement loops through each users and adds them to the array of the current users
+foreach ($User in $Users) {
+# Updating the Current list users that already have the desired permission
+$CUsers = $CUsers.GrantSendOnBehalfTo += "$user"
+}
+
+# Updating the mailbox with the new list of users
+Set-Mailbox "$mailbox" -GrantSendOnBehalfTo $CUsers 
+# Gathering Updated List of Current Users with GrantSendOnBehalfTo Permissions
+$NUsers = Get-Mailbox "$mailbox" | %{$_.GrantSendOnBehalfTo}
+# Screen Outputs with list of Updated Users list
+$UList
+$NUsers | %{Get-User $_ | select displayname,samaccountname}
+}
