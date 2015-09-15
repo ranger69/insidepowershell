@@ -1,4 +1,31 @@
+
 Function Update-AzureModule {
+<#
+.SYNOPSIS
+Updates your system to the latest Azure Module released on GitHub.
+.DESCRIPTION
+Compares current version installed, before installing the latest version.  
+.NOTES
+File Name: Update-AzureModule
+Author   : Homer Cavazos
+Requires : Elevated Priviledges
+.INPUTS
+Requires elevated PowerShell Session.
+.OUTPUTS
+Azure Version Available: 0.9.8
+Azure Version Installed Now: 0.9.7
+WARNING: Installing Latest Azure Version
+Azure Version Installed Now: 0.9.7
+-or-
+Azure Version Available: 0.9.8
+Azure Version Installed: Not Installed
+.EXAMPLE
+C:\PS> Update-AzureModule
+Installs the Azure Module if the current version is out of date or not installed.
+.EXAMPLE
+C:\PS> Update-AzureModule -Force
+Pulls the latest version of Azure and executes installation.
+#>
 [CmdletBinding()]Param
 (
  [Parameter(Mandatory=$false)]
@@ -26,7 +53,7 @@ $CurrentUser = New-Object Security.Principal.WindowsPrincipal $([Security.Princi
 if (($CurrentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) -eq $false)
 {
 	$ArgumentList = "-noexit"
-	Write-Host "Elevating to Administrative PowerShell Session"
+	Write-Host "elevating"
 	Start-Process powershell.exe -Verb RunAs -ArgumentList ($ArgumentList -f ($myinvocation.MyCommand.Definition))
 	Exit
 }
@@ -47,9 +74,9 @@ $AMPath = 'C:\Program Files (x86)\Microsoft SDKs\Azure\PowerShell\ServiceManagem
 $Script:PathCheck = Test-Path $AMPath 
 
 If ($PathCheck) {
-$Script:AMVersion = $Null
-[String]$AMVersion = GC $AMPath | select-string -pattern ModuleVersion
-$AMVersion = $($AMVersion.Split("'"))[1]
+
+[String]$AZVersion = GC $AMPath | select-string -pattern ModuleVersion
+$Script:AMVersion = $($AZVersion.Split("'"))[1]
 
 "Azure Version Installed Now: " + "$AMVersion"
 } else {
@@ -71,6 +98,5 @@ $Arguments="/qn /i "+"$Link"
 Write-Warning -Message "Installing Latest Azure Version"
 Start-Process 'C:\Windows\System32\MSIExec.exe' -ArgumentList $Arguments -Wait
 Check-InstalledAzureModule
-}else {"Latest Azure PowerShell Currently Installed!!"}
+}else {"Latest Azure PowerShell Has Been Installed!!"}
 }
-
