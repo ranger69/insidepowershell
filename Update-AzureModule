@@ -1,0 +1,76 @@
+Function Update-AzureModule {
+[CmdletBinding()]Param
+(
+ [Parameter(Mandatory=$false)]
+[Switch]$Force)
+
+#Checking RunAs Administrator Enabled
+Check-AdminRole 
+
+#Checking for Latest Azure Module Release
+Get-LatestAzureModule
+
+#Calling function to verify Azure Module is installed
+Check-InstalledAzureModule
+
+#Comparing Installed Azure Module to Latest Release
+Compare-AzureModuleVersions 
+
+#Report and Install Versions
+Install-LastestAzureModule
+
+}
+
+Function Check-AdminRole {
+$CurrentUser = New-Object Security.Principal.WindowsPrincipal $([Security.Principal.WindowsIdentity]::GetCurrent())
+if (($CurrentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) -eq $false)
+{
+	$ArgumentList = "-noexit"
+	Write-Host "Elevating to Administrative PowerShell Session"
+	Start-Process powershell.exe -Verb RunAs -ArgumentList ($ArgumentList -f ($myinvocation.MyCommand.Definition))
+	Exit
+}
+}
+
+Function Get-LatestAzureModule {
+$Url = "https://github.com/Azure/azure-powershell/releases"
+$AzureWeb = Invoke-WebRequest -Uri $Url -UserAgent Explorer    
+$Script:Link = ($AzureWeb.AllElements  |where {$_.outertext -like "Windows Standalone"})[0].href
+$Script:LatestAzureModule = ($Link.Split("/"))[8]
+$LatestAzureModule = $LatestAzureModule | %{$_.Split('.')[1]+"."+$_.Split('.')[2]+"."+$_.Split('.')[3]}
+"Azure Version Available: " + "$LatestAzureModule"
+$Azureweb.Dispose()
+}
+
+Function Check-InstalledAzureModule {
+$AMPath = 'C:\Program Files (x86)\Microsoft SDKs\Azure\PowerShell\ServiceManagement\Azure\Azure.psd1'
+$Script:PathCheck = Test-Path $AMPath 
+
+If ($PathCheck) {
+$Script:AMVersion = $Null
+[String]$AMVersion = GC $AMPath | select-string -pattern ModuleVersion
+$AMVersion = $($AMVersion.Split("'"))[1]
+
+"Azure Version Installed Now: " + "$AMVersion"
+} else {
+#Execute Azure Module Download and Install
+$Script:AMVersion = '0.0.0'
+"Azure Version Installed: " + "Not Installed"
+} 
+}
+
+Function Compare-AzureModuleVersions {
+If ($Force) {
+$Script:Results = $True
+} else {$Script:Results = $LatestAzureModule.Contains($AMVersion)}
+}
+
+Function Install-LastestAzureModule {
+If ($Results -eq $False){ 
+$Arguments="/qn /i "+"$Link" 
+Write-Warning -Message "Installing Latest Azure Version"
+Start-Process 'C:\Windows\System32\MSIExec.exe' -ArgumentList $Arguments -Wait
+Check-InstalledAzureModule
+}else {"Latest Azure PowerShell Currently Installed!!"}
+}
+
